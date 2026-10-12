@@ -1,3 +1,4 @@
+
 import os
 from pathlib import Path
 
@@ -162,12 +163,17 @@ with mlflow.start_run() as run:
         "r2_score": float(r2),
     })
 
-    # Log the model and register it.
+    # Log and register the model.
+    # Trust only this specific type because this script
+    # trains the RandomForest model locally.
     model_info = mlflow.sklearn.log_model(
         sk_model=model,
         name="model",
         registered_model_name=MODEL_NAME,
         input_example=X_train.head(2),
+        skops_trusted_types=[
+            "sklearn.tree._tree.Tree"
+        ],
     )
 
     run_id = run.info.run_id
