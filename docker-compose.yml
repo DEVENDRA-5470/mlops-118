@@ -1,0 +1,58 @@
+services:
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: house-price-mlops:1.0
+    container_name: mlflow-server
+    restart: unless-stopped
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - sqlite:////mlflow/mlflow.db
+      - --artifacts-destination
+      - /mlflow/mlartifacts
+    volumes:
+      - ./mlflow.db:/mlflow/mlflow.db
+      - ./mlruns:/mlflow/mlruns
+      - ./mlartifacts:/mlflow/mlartifacts
+    ports:
+      - "127.0.0.1:5000:5000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - mlops-network
+
+  prediction-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: house-price-mlops:1.0
+    container_name: house-price-api
+    restart: unless-stopped
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "8000:8000"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - mlops-network
+
+networks:
+  mlops-network:
+    driver: bridge
